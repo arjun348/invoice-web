@@ -14,7 +14,7 @@ export class AuthService {
   readonly user = signal<AuthUser | null>(this.getStoredUser());
   readonly isAuthenticated = computed(() => Boolean(this.user() && this.token));
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient) { }
 
   get token(): string | null {
     return localStorage.getItem(this.tokenKey);
@@ -30,6 +30,11 @@ export class AuthService {
           this.user.set(response.user);
         }),
       );
+  }
+
+  // New multi-tenant company onboarding method
+  registerCompany(payload: any): Observable<any> {
+    return this.http.post(`${environment.apiUrl}/register-company`, payload);
   }
 
   logout(): Observable<unknown> {

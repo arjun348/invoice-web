@@ -5,7 +5,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ThemeService } from '../../../core/theme/theme.service';
@@ -13,7 +13,8 @@ import { ToastService } from '../../../core/toast/toast.service';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule],
+  standalone: true,
+  imports: [ReactiveFormsModule, RouterModule],
   template: `
     <main class="min-h-screen flex items-center justify-center p-4 relative page-enter">
       <!-- Top-right theme toggle -->
@@ -153,6 +154,14 @@ import { ToastService } from '../../../core/toast/toast.service';
           </button>
         </form>
 
+        <!-- New Multi-Tenant Sign Up Link -->
+        <div class="mt-4 text-center text-xs">
+          <span class="text-[var(--text-muted)]">Need an account? </span>
+          <a routerLink="/register" class="text-sky-400 hover:text-sky-300 underline font-medium transition cursor-pointer">
+            Register your company
+          </a>
+        </div>
+
         <!-- Demo credentials helper -->
         <div class="mt-6 pt-5 border-t border-[var(--border-base)] text-xs text-[var(--text-muted)]">
           <div class="flex items-center justify-between mb-2">
@@ -200,7 +209,7 @@ export class LoginComponent {
 
   constructor() {
     if (this.auth.isAuthenticated()) {
-      this.router.navigateByUrl('/invoices');
+      this.routeRedirectByRole();
     }
   }
 
@@ -211,30 +220,38 @@ export class LoginComponent {
     });
     this.toast.info('Demo credentials loaded');
   }
-
   submit(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       this.error.set('Please provide a valid email and password.');
       return;
     }
-
     this.loading.set(true);
     this.error.set(null);
-
     this.auth
       .login(this.form.getRawValue())
       .pipe(finalize(() => this.loading.set(false)))
       .subscribe({
         next: () => {
           this.toast.success('Signed in successfully');
-          this.router.navigateByUrl('/invoices');
+          this.routeRedirectByRole();
         },
         error: (response: HttpErrorResponse) => {
-          this.error.set(
-            response.error?.message ?? 'Invalid credentials. Please verify your email and password.',
-          );
+          if (response.status === 403 && response.error?.code) {
+            this.error.set(response.error.message || 'Access restricted.');
+          } else {
+            this.error.set(
+              response.error?.message ?? 'Invalid credentials. Please verify your email and password.',
+            );
+          }
         },
       });
+  }
+  private routeRedirectByRole(): void {
+    if (this.auth.user()?.role === 'super_admin') {
+      this.router.navigateByUrl('/super-admin/companies');
+    } else {
+      this.router.navigateByUrl('/invoices');
+    }
   }
 }

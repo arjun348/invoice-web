@@ -1,0 +1,112 @@
+<div class="p-6 max-w-6xl mx-auto space-y-6 page-enter">
+    <div class="flex items-center justify-between border-b border-[var(--border-base)] pb-4">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Team Management</h1>
+            <p class="text-sm text-[var(--text-secondary)]">Manage your organization operators, change roles, and handle
+                access privileges.</p>
+        </div>
+        <button *ngIf="auth.user()?.role === 'admin'" (click)="showAddForm.set(!showAddForm())" class="btn btn-primary"
+            type="button">
+            {{ showAddForm() ? 'Cancel View' : 'Add Team Member' }}
+        </button>
+    </div>
+
+    <!-- Sliding Add Operator Form Section -->
+    <div *ngIf="showAddForm() && auth.user()?.role === 'admin'"
+        class="surface border border-[var(--border-base)] rounded-xl p-5 shadow-xl">
+        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Provision Workspace User</h3>
+
+        <div *ngIf="errorMessage()"
+            class="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
+            {{ errorMessage() }}
+        </div>
+
+        <form [formGroup]="userForm" (ngSubmit)="submitNewUser()" class="grid grid-cols-1 md:grid-cols-2 gap-4"
+            novalidate>
+            <div>
+                <label class="field-label" for="add-name">Full Name</label>
+                <input id="add-name" type="text" class="input" formControlName="name" placeholder="John Doe" />
+            </div>
+
+            <div>
+                <label class="field-label" for="add-email">Email Address</label>
+                <input id="add-email" type="email" class="input" formControlName="email"
+                    placeholder="john@company.com" />
+            </div>
+
+            <div>
+                <label class="field-label" for="add-role">Permission Privilege Tier</label>
+                <select id="add-role" class="input" formControlName="role">
+                    <option value="viewer">Viewer (Read-Only access)</option>
+                    <option value="admin">Admin (Full write capabilities)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="field-label" for="add-pass">Temporary Setup Password</label>
+                <input id="add-pass" type="text" class="input" formControlName="password"
+                    placeholder="Min 8 characters" />
+            </div>
+
+            <div class="md:col-span-2 flex justify-end pt-2">
+                <button type="submit" class="btn btn-primary px-6" [disabled]="isSaving()">
+                    <span *ngIf="!isSaving()">Provision Operator Account</span>
+                    <span *ngIf="isSaving()" class="spinner"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading()" class="flex justify-center py-12">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Team Member Data Ledger Sheets -->
+    <div *ngIf="!isLoading()" class="surface rounded-xl border border-[var(--border-base)] shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead>
+                    <tr
+                        class="bg-[var(--bg-surface-2)] text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] border-b border-[var(--border-base)]">
+                        <th class="p-4">Staff Member</th>
+                        <th class="p-4">Email</th>
+                        <th class="p-4">Privilege Role</th>
+                        <th class="p-4 text-right" *ngIf="auth.user()?.role === 'admin'">Access Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-[var(--border-base)] text-sm text-[var(--text-secondary)]">
+                    <tr *ngFor="let user of users()" class="hover:bg-[var(--bg-surface-15)] transition-colors">
+                        <td class="p-4 font-medium text-[var(--text-primary)]">
+                            <div class="flex items-center gap-2">
+                                <div
+                                    class="w-7 h-7 rounded-full bg-sky-500/10 border border-sky-500/20 flex items-center justify-center font-bold text-xs text-sky-400">
+                                    {{ user.name.substring(0,2).toUpperCase() }}
+                                </div>
+                                <span>{{ user.name }}</span>
+                                <span *ngIf="user.id === auth.user()?.id"
+                                    class="text-[10px] bg-sky-500/15 border border-sky-500/30 text-sky-400 px-1.5 py-0.5 rounded font-mono font-semibold uppercase">You</span>
+                            </div>
+                        </td>
+                        <td class="p-4 font-mono text-xs">{{ user.email }}</td>
+                        <td class="p-4">
+                            <span [ngClass]="{
+                'bg-emerald-500/15 text-emerald-400 border-emerald-500/30': user.role === 'admin',
+                'bg-slate-500/15 text-slate-400 border-slate-500/30': user.role === 'viewer'
+              }" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border capitalize">
+                                {{ user.role }}
+                            </span>
+                        </td>
+                        <td class="p-4 text-right" *ngIf="auth.user()?.role === 'admin'">
+                            <button [disabled]="user.id === auth.user()?.id" (click)="deleteUser(user)"
+                                class="text-xs text-red-400 hover:text-red-300 font-medium underline transition disabled:opacity-30 disabled:no-underline cursor-pointer"
+                                type="button">
+                                Revoke Access
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

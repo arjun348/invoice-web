@@ -3,6 +3,7 @@ import { authGuard } from './core/auth/auth.guard';
 import { guestGuard } from './core/auth/guest.guard';
 import { adminGuard } from './core/auth/admin.guard';
 import { pendingChangesGuard } from './core/guards/pending-changes.guard';
+import { superAdminGuard } from './core/guards/super-admin.guard';
 
 export const routes: Routes = [
   {
@@ -46,6 +47,16 @@ export const routes: Routes = [
       import('./features/clients/client-list/client-list.component').then(
         (module) => module.ClientListComponent,
       ),
+  },
+  {
+    path: 'super-admin/companies',
+    loadComponent: () => import('./features/super-admin/company-console/company-console.component')
+      .then(m => m.CompanyConsoleComponent),
+    canActivate: [superAdminGuard]
+  },
+  {
+    path: 'team',
+    loadComponent: () => import('./features/team/team-list/team-list.component').then(m => m.TeamListComponent)
   },
   {
     path: '',
