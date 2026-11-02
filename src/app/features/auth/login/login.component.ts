@@ -198,6 +198,12 @@ export class LoginComponent {
     password: ['Admin@12345', [Validators.required]],
   });
 
+  constructor() {
+    if (this.auth.isAuthenticated()) {
+      this.router.navigateByUrl('/invoices');
+    }
+  }
+
   fillDemoCredentials(): void {
     this.form.patchValue({
       email: 'admin@demo.test',

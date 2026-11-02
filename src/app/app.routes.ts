@@ -1,11 +1,13 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { guestGuard } from './core/auth/guest.guard';
 import { adminGuard } from './core/auth/admin.guard';
 import { pendingChangesGuard } from './core/guards/pending-changes.guard';
 
 export const routes: Routes = [
   {
     path: 'login',
+    canActivate: [guestGuard],
     loadComponent: () =>
       import('./features/auth/login/login.component').then(
         (module) => module.LoginComponent,
