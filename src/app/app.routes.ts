@@ -1,54 +1,57 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
 import { adminGuard } from './core/auth/admin.guard';
+import { pendingChangesGuard } from './core/guards/pending-changes.guard';
 
 export const routes: Routes = [
-    {
-        path: 'login',
-        loadComponent: () =>
-        import('./features/auth/login/login.component').then(
-            (module) => module.LoginComponent,
-        ),
-    },
-    {
-        path: 'invoices',
-        canActivate: [authGuard],
-        loadComponent: () =>
-        import('./features/invoices/invoice-list/invoice-list.component').then(
-            (module) => module.InvoiceListComponent,
-        ),
-    },
-    {
-        path: 'invoices/new',
-        canActivate: [authGuard, adminGuard],
-        loadComponent: () =>
-            import('./features/invoices/invoice-form/invoice-form.component').then(
-            (module) => module.InvoiceFormComponent,
-            ),
-    },
-    {
-        path: 'invoices/:id/edit',
-        canActivate: [authGuard, adminGuard],
-        loadComponent: () =>
-            import('./features/invoices/invoice-form/invoice-form.component').then(
-            (module) => module.InvoiceFormComponent,
-            ),
-    },
-    {
-        path: 'clients',
-        canActivate: [authGuard],
-        loadComponent: () =>
-            import('./features/clients/client-list/client-list.component').then(
-            (module) => module.ClientListComponent,
-            ),
-    },
-    {
-        path: '',
-        pathMatch: 'full',
-        redirectTo: 'invoices',
-    },
-    {
-        path: '**',
-        redirectTo: 'invoices',
-    },
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./features/auth/login/login.component').then(
+        (module) => module.LoginComponent,
+      ),
+  },
+  {
+    path: 'invoices',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/invoices/invoice-list/invoice-list.component').then(
+        (module) => module.InvoiceListComponent,
+      ),
+  },
+  {
+    path: 'invoices/new',
+    canActivate: [authGuard, adminGuard],
+    canDeactivate: [pendingChangesGuard],
+    loadComponent: () =>
+      import('./features/invoices/invoice-form/invoice-form.component').then(
+        (module) => module.InvoiceFormComponent,
+      ),
+  },
+  {
+    path: 'invoices/:id/edit',
+    canActivate: [authGuard, adminGuard],
+    canDeactivate: [pendingChangesGuard],
+    loadComponent: () =>
+      import('./features/invoices/invoice-form/invoice-form.component').then(
+        (module) => module.InvoiceFormComponent,
+      ),
+  },
+  {
+    path: 'clients',
+    canActivate: [authGuard],
+    loadComponent: () =>
+      import('./features/clients/client-list/client-list.component').then(
+        (module) => module.ClientListComponent,
+      ),
+  },
+  {
+    path: '',
+    pathMatch: 'full',
+    redirectTo: 'invoices',
+  },
+  {
+    path: '**',
+    redirectTo: 'invoices',
+  },
 ];
