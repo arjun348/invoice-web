@@ -74,7 +74,9 @@ import { ToastService } from '../../../core/toast/toast.service';
         <div class="mt-6 pt-5 border-t border-[var(--border-base)] text-xs text-[var(--text-muted)]">
           <div class="flex items-center justify-between mb-2">
             <span class="font-medium text-[var(--text-secondary)]">Demo Credentials:</span>
-            <button type="button" class="text-sky-400 hover:text-sky-300 underline" (click)="fillDemoCredentials()">Fill Demo Login</button>
+            <button type="button" class="text-sky-400 hover:text-sky-300 underline" (click)="fillDemoCredentials()">Fill Demo Admin Login</button>
+            <button type="button" class="text-sky-400 hover:text-sky-300 underline" (click)="fillViewerCredentials()">Fill Demo Viewer Login</button>
+            <!-- <button type="button" class="text-sky-400 hover:text-sky-300 underline" (click)="fillSuperAdminCredentials()">Fill Super Admin Login</button> -->
           </div>
         </div>
       </section>
@@ -151,8 +153,8 @@ export class LoginComponent {
   @ViewChild('emailInput') emailInput?: ElementRef;
 
   readonly form = this.formBuilder.nonNullable.group({
-    email: ['admin@demo.test', [Validators.required, Validators.email]],
-    password: ['Admin@12345', [Validators.required]],
+    email: ['', [Validators.required, Validators.email]],
+    password: ['', [Validators.required]],
   });
 
   readonly registerForm = this.formBuilder.nonNullable.group({
@@ -175,6 +177,22 @@ export class LoginComponent {
       password: 'Admin@12345',
     });
     this.toast.info('Demo credentials loaded');
+  }
+
+  fillViewerCredentials(): void {
+    this.form.patchValue({
+      email: 'viewer@demo.test',
+      password: 'Viewer@12345',
+    });
+    this.toast.info('Viewer credentials loaded');
+  }
+
+  fillSuperAdminCredentials(): void {
+    this.form.patchValue({
+      email: 'superadmin@demo.test',
+      password: 'SuperAdmin@Secure2026!',
+    });
+    this.toast.info('Super Admin credentials loaded');
   }
 
   submit(): void {
