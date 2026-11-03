@@ -49,12 +49,13 @@ export class TeamListComponent implements OnInit {
 
   public loadTeamMembers(): void {
     this.isLoading.set(true);
-    this.http.get<TenantUser[]>(this.apiUrl).subscribe({
-      next: (data) => {
-        this.users.set(data);
+    this.http.get<{ data: TenantUser[] }>(this.apiUrl).subscribe({
+      next: (response) => {
+        this.users.set(response.data || []);
         this.isLoading.set(false);
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
+        this.users.set([]);
         this.toast.error('Failed to sync corporate directory records.');
         this.isLoading.set(false);
       }
