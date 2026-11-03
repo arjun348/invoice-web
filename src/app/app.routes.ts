@@ -5,6 +5,7 @@ import { adminGuard } from './core/auth/admin.guard';
 import { pendingChangesGuard } from './core/guards/pending-changes.guard';
 import { superAdminGuard } from './core/guards/super-admin.guard';
 import { tenantGuard } from './core/guards/tenant.guard';
+import { teamManagerGuard } from './core/guards/team-manager.guard';
 
 export const routes: Routes = [
   {
@@ -59,7 +60,7 @@ export const routes: Routes = [
     path: 'team',
     loadComponent: () => import('./features/team/team-list/team-list.component')
       .then(m => m.TeamListComponent),
-    canActivate: [authGuard, adminGuard, tenantGuard],
+    canActivate: [authGuard, adminGuard, tenantGuard, teamManagerGuard],
   },
   {
     path: '',

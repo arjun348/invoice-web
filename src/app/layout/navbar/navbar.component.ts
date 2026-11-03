@@ -119,6 +119,7 @@ export class NavbarComponent {
 
   readonly menuItems = computed(() => {
     const role = this.auth.user()?.role as string;
+    const is_primary_admin = this.auth.user()?.is_primary_admin as boolean;
     if (role === 'super_admin') {
       return [{ label: 'Companies', path: '/super-admin/companies' }];
     }
@@ -126,7 +127,7 @@ export class NavbarComponent {
       { label: 'Invoices', path: '/invoices' },
       { label: 'Clients', path: '/clients' }
     ];
-    if (role === 'admin') {
+    if (role === 'admin' && is_primary_admin === true) {
       items.push({ label: 'Team', path: '/team' });
     }
     return items;

@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   company_id: number;
   role: UserRole;
+  is_primary_admin: boolean;
 }
 
 export interface LoginResponse {
