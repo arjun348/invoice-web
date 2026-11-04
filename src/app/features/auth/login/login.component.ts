@@ -16,6 +16,10 @@ const passwordsMatch: ValidatorFn = (group) =>
   selector: 'app-login',
   standalone: true,
   imports: [ReactiveFormsModule, A11yModule],
+  styles: [`
+    .register-modal-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+    .register-modal-scroll::-webkit-scrollbar { display: none; width: 0; height: 0; }
+  `],
   template: `
     <main class="min-h-screen flex items-center justify-center p-4 relative page-enter">
       <!-- Top-right theme toggle -->
@@ -69,7 +73,7 @@ const passwordsMatch: ValidatorFn = (group) =>
                      [type]="showPassword() ? 'text' : 'password'"
                      autocomplete="current-password" placeholder="••••••••"
                      [attr.aria-invalid]="!!fieldError(form.controls.password, 'Password')" />
-              <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-400 focus-visible:ring-2 focus-visible:ring-sky-500"
+              <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-400 hover:text-sky-500 transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-sky-500"
                 style="background: transparent; border: 0; cursor: pointer;"
                 (click)="showPassword.set(!showPassword())"
                 [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
@@ -115,7 +119,7 @@ const passwordsMatch: ValidatorFn = (group) =>
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
           style="background: rgba(15,23,42,0.7); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);"
           (click)="closeRegisterModal()">
-          <section class="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-8 border border-[var(--border-base)] shadow-2xl"
+          <section class="register-modal-scroll w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl p-8 border border-[var(--border-base)] shadow-2xl"
             [style.background]="themeService.theme() === 'dark' ? '#0f172a' : '#ffffff'"
             [style.color]="themeService.theme() === 'dark' ? '#f1f5f9' : '#0f172a'"
                    role="dialog" aria-modal="true" aria-labelledby="register-title"
@@ -170,11 +174,17 @@ const passwordsMatch: ValidatorFn = (group) =>
                     <input id="reg-password" class="input pr-10" formControlName="password"
                            [type]="showRegPassword() ? 'text' : 'password'" autocomplete="new-password"
                            [attr.aria-invalid]="!!fieldError(registerForm.controls.password, 'Password')" />
-                    <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-slate-500"
+                    <button type="button"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-500 hover:text-sky-500 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                            style="background: transparent; border: 0;"
                             (click)="showRegPassword.set(!showRegPassword())"
                             [attr.aria-label]="showRegPassword() ? 'Hide password' : 'Show password'"
                             [attr.aria-pressed]="showRegPassword()">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                      @if (showRegPassword()) {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      } @else {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                      }
                     </button>
                   </div>
                   <p class="mt-1 text-xs text-slate-500">At least 8 characters.</p>
@@ -185,7 +195,22 @@ const passwordsMatch: ValidatorFn = (group) =>
 
                 <div>
                   <label class="field-label" for="reg-confirm">Confirm password</label>
-                  <input id="reg-confirm" class="input" type="password" formControlName="password_confirmation" autocomplete="new-password" />
+                  <div class="relative">
+                    <input id="reg-confirm" class="input pr-10" [type]="showRegConfirmPassword() ? 'text' : 'password'"
+                           formControlName="password_confirmation" autocomplete="new-password" />
+                    <button type="button"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md text-slate-500 hover:text-sky-500 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                            style="background: transparent; border: 0;"
+                            (click)="showRegConfirmPassword.set(!showRegConfirmPassword())"
+                            [attr.aria-label]="showRegConfirmPassword() ? 'Hide confirm password' : 'Show confirm password'"
+                            [attr.aria-pressed]="showRegConfirmPassword()">
+                      @if (showRegConfirmPassword()) {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      } @else {
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                      }
+                    </button>
+                  </div>
                   @if (registerForm.hasError('mismatch') && registerForm.controls.password_confirmation.touched) {
                     <p class="mt-1 text-xs text-red-600">Passwords do not match.</p>
                   }
@@ -217,6 +242,7 @@ export class LoginComponent {
 
   readonly showRegisterModal = signal(false);
   readonly showRegPassword = signal(false);
+  readonly showRegConfirmPassword = signal(false);
   readonly regLoading = signal(false);
   readonly regError = signal<string | null>(null);
   readonly isPendingApproval = signal(false);
@@ -320,6 +346,7 @@ export class LoginComponent {
     this.regError.set(null);
     this.isPendingApproval.set(false);
     this.showRegPassword.set(false);
+    this.showRegConfirmPassword.set(false);
     this.showRegisterModal.set(true);
   }
 
