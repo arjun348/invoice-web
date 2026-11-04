@@ -7,6 +7,7 @@ import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/auth/auth.service';
 import { ThemeService } from '../../../core/theme/theme.service';
 import { ToastService } from '../../../core/toast/toast.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-login',
@@ -76,7 +77,10 @@ import { ToastService } from '../../../core/toast/toast.service';
             <span class="font-medium text-[var(--text-secondary)]">Demo Credentials:</span>
             <button type="button" class="text-sky-400 hover:text-sky-300 underline" (click)="fillDemoCredentials()">Fill Demo Admin Login</button>
             <button type="button" class="text-sky-400 hover:text-sky-300 underline" (click)="fillViewerCredentials()">Fill Demo Viewer Login</button>
-            <!-- <button type="button" class="text-sky-400 hover:text-sky-300 underline" (click)="fillSuperAdminCredentials()">Fill Super Admin Login</button> -->
+            @if (devLogins) {
+              <button type="button" class="text-sky-400 hover:text-sky-300 underline"
+                (click)="fillSuperAdminCredentials()">Fill Super Admin Login</button>
+            }
           </div>
         </div>
       </section>
@@ -187,11 +191,11 @@ export class LoginComponent {
     this.toast.info('Viewer credentials loaded');
   }
 
+  readonly devLogins = environment.devLogins;
+
   fillSuperAdminCredentials(): void {
-    this.form.patchValue({
-      email: 'superadmin@demo.test',
-      password: 'SuperAdmin@Secure2026!',
-    });
+    if (!this.devLogins) return;
+    this.form.patchValue(this.devLogins.superAdmin);
     this.toast.info('Super Admin credentials loaded');
   }
 
