@@ -1,11 +1,16 @@
-import { Component, ElementRef, ViewChild, inject, signal } from '@angular/core';
-import { ReactiveFormsModule, Validators, FormBuilder } from '@angular/forms';
+
+import { Component, inject, signal } from '@angular/core';
+import {
+  FormArray,
+  FormBuilder,
+  ReactiveFormsModule,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { Client } from '../../../core/clients/client.types';
 import { ClientService } from '../../../core/clients/client.service';
 import { InvoicePayload, InvoiceService } from '../../../core/invoices/invoice.service';
-import { InvoiceStatus } from '../../../core/invoices/invoice.types';
 import { ConfirmDialogService } from '../../../core/confirm-dialog/confirm-dialog.service';
 import { ToastService } from '../../../core/toast/toast.service';
 import { ComponentCanDeactivate } from '../../../core/guards/pending-changes.guard';
@@ -14,11 +19,11 @@ const DRAFT_STORAGE_KEY = 'it_invoice_draft';
 
 @Component({
   selector: 'app-invoice-form',
+  standalone: true,
   imports: [ReactiveFormsModule],
   template: `
     <main class="min-h-screen bg-[var(--bg-base)] px-4 py-8 text-[var(--text-primary)] sm:px-6 page-enter">
-      <section class="mx-auto max-w-2xl">
-        <!-- Breadcrumb / Back button -->
+      <section class="mx-auto max-w-3xl">
         <button
           class="btn btn-ghost btn-sm mb-6 -ml-2 text-sky-400 hover:text-sky-300"
           (click)="cancel()"
@@ -42,7 +47,7 @@ const DRAFT_STORAGE_KEY = 'it_invoice_draft';
                 }
               </div>
               <p class="text-sm text-[var(--text-secondary)] mt-1">
-                {{ editing() ? 'Update existing invoice details.' : 'Fill in the details to issue a new client invoice.' }}
+                {{ editing() ? 'Update your draft invoice details.' : 'Create a new invoice for your client.' }}
               </p>
             </div>
 
@@ -51,14 +56,12 @@ const DRAFT_STORAGE_KEY = 'it_invoice_draft';
                 type="button"
                 class="btn btn-secondary btn-sm text-xs"
                 (click)="discardDraft()"
-                title="Discard restored draft"
               >
                 Clear draft
               </button>
             }
           </div>
 
-          <!-- Error Alert / Summary -->
           @if (error()) {
             <div
               class="mt-6 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200 flex items-start gap-3"
@@ -71,7 +74,7 @@ const DRAFT_STORAGE_KEY = 'it_invoice_draft';
                 <p class="font-medium">{{ error() }}</p>
                 @if (validationErrors().length > 0) {
                   <ul class="list-disc list-inside mt-1.5 space-y-0.5 text-xs text-red-300">
-                    @for (err of validationErrors(); track err) {
+                    @for (err of validationErrors(); track $index) {
                       <li>{{ err }}</li>
                     }
                   </ul>
@@ -80,19 +83,17 @@ const DRAFT_STORAGE_KEY = 'it_invoice_draft';
             </div>
           }
 
-          <form class="mt-6 space-y-5" [formGroup]="form" (ngSubmit)="submit()" novalidate>
-            <!-- Client selector -->
+          <form class="mt-6 space-y-6" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+            <!-- Client -->
             <div>
               <label class="field-label" for="invoice-client">
                 Client <span class="text-red-400">*</span>
               </label>
               <select
-                #clientSelect
                 id="invoice-client"
                 class="input"
                 [class.error]="isFieldInvalid('client_id')"
                 formControlName="client_id"
-                aria-describedby="client-error"
               >
                 <option [ngValue]="0" disabled>Select a client…</option>
                 @for (client of clients(); track client.id) {
@@ -102,68 +103,26 @@ const DRAFT_STORAGE_KEY = 'it_invoice_draft';
                 }
               </select>
               @if (isFieldInvalid('client_id')) {
-                <p id="client-error" class="field-error" role="alert">Please select a valid client.</p>
+                <p class="field-error" role="alert">Please select a client.</p>
               }
             </div>
 
-            <!-- Two-column row: Invoice Number & Amount -->
+            <!-- Dates -->
             <div class="grid gap-5 sm:grid-cols-2">
               <div>
-                <label class="field-label" for="invoice-number">
-                  Invoice Number <span class="text-red-400">*</span>
+                <label class="field-label" for="invoice-date">
+                  Invoice Date <span class="text-red-400">*</span>
                 </label>
                 <input
-                  id="invoice-number"
-                  class="input font-mono"
-                  [class.error]="isFieldInvalid('number')"
-                  formControlName="number"
-                  placeholder="e.g. INV-2026-001"
-                  aria-describedby="number-error"
-                />
-                @if (isFieldInvalid('number')) {
-                  <p id="number-error" class="field-error" role="alert">Invoice number is required.</p>
-                }
-              </div>
-
-              <div>
-                <label class="field-label" for="invoice-amount">
-                  Amount (AED) <span class="text-red-400">*</span>
-                </label>
-                <div class="relative">
-                  <input
-                    id="invoice-amount"
-                    class="input tabular-nums"
-                    [class.error]="isFieldInvalid('amount')"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    formControlName="amount"
-                    placeholder="0.00"
-                    aria-describedby="amount-error"
-                  />
-                </div>
-                @if (isFieldInvalid('amount')) {
-                  <p id="amount-error" class="field-error" role="alert">Amount must be greater than or equal to 0.</p>
-                }
-              </div>
-            </div>
-
-            <!-- Two-column row: Status & Due Date -->
-            <div class="grid gap-5 sm:grid-cols-2">
-              <div>
-                <label class="field-label" for="invoice-status">
-                  Status <span class="text-red-400">*</span>
-                </label>
-                <select
-                  id="invoice-status"
+                  id="invoice-date"
                   class="input"
-                  [class.error]="isFieldInvalid('status')"
-                  formControlName="status"
-                >
-                  <option value="draft">Draft</option>
-                  <option value="sent">Sent</option>
-                  <option value="paid">Paid</option>
-                </select>
+                  [class.error]="isFieldInvalid('invoice_date')"
+                  type="date"
+                  formControlName="invoice_date"
+                />
+                @if (isFieldInvalid('invoice_date')) {
+                  <p class="field-error" role="alert">Invoice date is required.</p>
+                }
               </div>
 
               <div>
@@ -176,11 +135,148 @@ const DRAFT_STORAGE_KEY = 'it_invoice_draft';
                   [class.error]="isFieldInvalid('due_date')"
                   type="date"
                   formControlName="due_date"
-                  aria-describedby="due-date-error"
                 />
                 @if (isFieldInvalid('due_date')) {
-                  <p id="due-date-error" class="field-error" role="alert">Due date is required.</p>
+                  <p class="field-error" role="alert">Due date is required and cannot be before the invoice date.</p>
                 }
+              </div>
+            </div>
+
+            <!-- Line items -->
+            <section class="space-y-4">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h2 class="text-base font-semibold">Invoice Items</h2>
+                  <p class="text-xs text-[var(--text-muted)] mt-1">
+                    Add the products or services included in this invoice.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  class="btn btn-secondary btn-sm"
+                  (click)="addItem()"
+                >
+                  <span class="text-lg leading-none">+</span>
+                  Add item
+                </button>
+              </div>
+
+              <div formArrayName="items" class="space-y-4">
+                @for (item of items.controls; track $index; let i = $index) {
+                  <div
+                    [formGroupName]="i"
+                    class="rounded-xl border border-[var(--border-base)] p-4 space-y-4"
+                  >
+                    <div class="flex items-center justify-between">
+                      <span class="text-sm font-semibold text-[var(--text-secondary)]">
+                        Item {{ i + 1 }}
+                      </span>
+                      @if (items.length > 1) {
+                        <button
+                          type="button"
+                          class="text-xs text-red-400 hover:text-red-300"
+                          (click)="removeItem(i)"
+                        >
+                          Remove
+                        </button>
+                      }
+                    </div>
+
+                    <div>
+                      <label class="field-label" [for]="'item-description-' + i">
+                        Description <span class="text-red-400">*</span>
+                      </label>
+                      <input
+                        [id]="'item-description-' + i"
+                        class="input"
+                        [class.error]="isItemFieldInvalid(i, 'description')"
+                        formControlName="description"
+                        placeholder="e.g. Website development"
+                      />
+                      @if (isItemFieldInvalid(i, 'description')) {
+                        <p class="field-error">Description is required.</p>
+                      }
+                    </div>
+
+                    <div class="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label class="field-label" [for]="'item-quantity-' + i">
+                          Quantity <span class="text-red-400">*</span>
+                        </label>
+                        <input
+                          [id]="'item-quantity-' + i"
+                          class="input tabular-nums"
+                          [class.error]="isItemFieldInvalid(i, 'quantity')"
+                          type="number"
+                          min="0.001"
+                          step="0.001"
+                          formControlName="quantity"
+                          placeholder="1"
+                        />
+                        @if (isItemFieldInvalid(i, 'quantity')) {
+                          <p class="field-error">Quantity must be greater than 0 (up to 3 decimal places).</p>
+                        }
+                      </div>
+
+                      <div>
+                        <label class="field-label" [for]="'item-price-' + i">
+                          Unit Price (AED) <span class="text-red-400">*</span>
+                        </label>
+                        <input
+                          [id]="'item-price-' + i"
+                          class="input tabular-nums"
+                          [class.error]="isItemFieldInvalid(i, 'unit_price')"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          formControlName="unit_price"
+                          placeholder="0.00"
+                        />
+                        @if (isItemFieldInvalid(i, 'unit_price')) {
+                          <p class="field-error">Unit price must be 0 or greater.</p>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="flex justify-end border-t border-[var(--border-base)] pt-3">
+                      <span class="text-sm text-[var(--text-secondary)]">
+                        Line total:
+                        <strong class="ml-1 text-[var(--text-primary)] tabular-nums">
+                          AED {{ lineTotal(i).toFixed(2) }}
+                        </strong>
+                      </span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </section>
+
+            <!-- Discount -->
+            <div class="grid gap-5 sm:grid-cols-2">
+              <div>
+                <label class="field-label" for="discount-percentage">
+                  Discount (%)
+                </label>
+                <input
+                  id="discount-percentage"
+                  class="input tabular-nums"
+                  [class.error]="isFieldInvalid('discount_percentage')"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  formControlName="discount_percentage"
+                  placeholder="0"
+                />
+                @if (isFieldInvalid('discount_percentage')) {
+                  <p class="field-error">Discount must be between 0 and 100.</p>
+                }
+              </div>
+
+              <div class="flex items-end">
+                <p class="text-xs text-[var(--text-muted)] pb-3">
+                  VAT is fixed at 5% and calculated by the server after discount.
+                </p>
               </div>
             </div>
 
@@ -195,11 +291,42 @@ const DRAFT_STORAGE_KEY = 'it_invoice_draft';
                 class="input"
                 formControlName="notes"
                 rows="4"
-                placeholder="Include payment instructions, bank transfer details, or notes to the client…"
+                placeholder="Payment instructions, bank transfer details, or notes to the client…"
               ></textarea>
             </div>
 
-            <!-- Actions footer -->
+            <!-- Estimated totals -->
+            <section class="rounded-xl border border-[var(--border-base)] bg-[var(--bg-base)] p-4">
+              <h2 class="text-sm font-semibold mb-3">Estimated Invoice Summary</h2>
+
+              <div class="space-y-2 text-sm">
+                <div class="flex justify-between text-[var(--text-secondary)]">
+                  <span>Subtotal</span>
+                  <span class="tabular-nums">AED {{ preview.subtotal.toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between text-[var(--text-secondary)]">
+                  <span>Discount ({{ preview.discountPercentage.toFixed(2) }}%)</span>
+                  <span class="tabular-nums">− AED {{ preview.discountAmount.toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between text-[var(--text-secondary)]">
+                  <span>Taxable Amount</span>
+                  <span class="tabular-nums">AED {{ preview.taxableAmount.toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between text-[var(--text-secondary)]">
+                  <span>VAT (5%)</span>
+                  <span class="tabular-nums">AED {{ preview.vatAmount.toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between border-t border-[var(--border-base)] pt-3 mt-3 text-base font-bold">
+                  <span>Total (AED)</span>
+                  <span class="tabular-nums">AED {{ preview.total.toFixed(2) }}</span>
+                </div>
+              </div>
+              <p class="text-xs text-[var(--text-muted)] mt-3">
+                These figures are estimates. The final invoice totals are calculated by Laravel.
+              </p>
+            </section>
+
+            <!-- Actions -->
             <div class="flex items-center justify-end gap-3 pt-4 border-t border-[var(--border-base)]">
               <button
                 type="button"
@@ -221,7 +348,7 @@ const DRAFT_STORAGE_KEY = 'it_invoice_draft';
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                     <path d="M13.5 4.5l-6 6-3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                   </svg>
-                  <span>{{ editing() ? 'Update invoice' : 'Save invoice' }}</span>
+                  <span>{{ editing() ? 'Update invoice' : 'Save draft' }}</span>
                 }
               </button>
             </div>
@@ -250,16 +377,40 @@ export class InvoiceFormComponent implements ComponentCanDeactivate {
 
   private invoiceId: number | null = null;
 
-  @ViewChild('clientSelect') clientSelect?: ElementRef<HTMLSelectElement>;
-
   readonly form = this.formBuilder.nonNullable.group({
     client_id: [0, [Validators.required, Validators.min(1)]],
-    number: ['', [Validators.required, Validators.maxLength(255)]],
-    amount: [0, [Validators.required, Validators.min(0)]],
-    status: ['draft' as InvoiceStatus, [Validators.required]],
-    due_date: ['', [Validators.required]],
+    invoice_date: [this.today(), [Validators.required]],
+    due_date: [this.today(), [Validators.required]],
+    discount_percentage: [0, [Validators.min(0), Validators.max(100)]],
     notes: [''],
+    items: this.formBuilder.array([this.createItemGroup()]),
   });
+
+  get items(): FormArray {
+    return this.form.controls.items;
+  }
+
+  get preview() {
+    const subtotal = this.items.controls.reduce((sum, item) => {
+      const quantity = Number(item.get('quantity')?.value) || 0;
+      const price = Number(item.get('unit_price')?.value) || 0;
+      return sum + quantity * price;
+    }, 0);
+
+    const discountPercentage = Number(this.form.controls.discount_percentage.value) || 0;
+    const discountAmount = subtotal * discountPercentage / 100;
+    const taxableAmount = subtotal - discountAmount;
+    const vatAmount = taxableAmount * 0.05;
+
+    return {
+      subtotal,
+      discountPercentage,
+      discountAmount,
+      taxableAmount,
+      vatAmount,
+      total: taxableAmount + vatAmount,
+    };
+  }
 
   constructor() {
     this.loadClients();
@@ -271,21 +422,67 @@ export class InvoiceFormComponent implements ComponentCanDeactivate {
       this.editing.set(true);
       this.loadInvoice(id);
     } else {
-      // Check for saved draft for new invoice
       this.restoreDraft();
-      // Listen to value changes to autosave draft
+
       this.form.valueChanges.subscribe(() => {
         if (!this.editing() && !this.submitted() && this.form.dirty) {
           try {
-            sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(this.form.getRawValue()));
+            sessionStorage.setItem(
+              DRAFT_STORAGE_KEY,
+              JSON.stringify(this.form.getRawValue()),
+            );
             this.hasDraft.set(true);
-          } catch (_) {}
+          } catch {
+            // Storage may be unavailable.
+          }
         }
       });
     }
   }
 
-  // Guard against unsaved changes on navigation
+  private today(): string {
+    const date = new Date();
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private createItemGroup() {
+    return this.formBuilder.nonNullable.group({
+      description: ['', [Validators.required, Validators.maxLength(1000)]],
+      quantity: [1, [Validators.required, Validators.min(0.001)]],
+      unit_price: [0, [Validators.required, Validators.min(0)]],
+    });
+  }
+
+  addItem(): void {
+    this.items.push(this.createItemGroup());
+    this.form.markAsDirty();
+  }
+
+  removeItem(index: number): void {
+    if (this.items.length <= 1) return;
+
+    this.items.removeAt(index);
+    this.form.markAsDirty();
+  }
+
+  lineTotal(index: number): number {
+    const item = this.items.at(index).getRawValue();
+    return (Number(item.quantity) || 0) * (Number(item.unit_price) || 0);
+  }
+
+  isFieldInvalid(field: string): boolean {
+    const control = this.form.get(field);
+    return !!(control && control.invalid && (control.touched || control.dirty));
+  }
+
+  isItemFieldInvalid(index: number, field: string): boolean {
+    const control = this.items.at(index).get(field);
+    return !!(control && control.invalid && (control.touched || control.dirty));
+  }
+
   async canDeactivate(): Promise<boolean> {
     if (this.form.dirty && !this.submitted()) {
       return await this.confirm.open({
@@ -296,22 +493,38 @@ export class InvoiceFormComponent implements ComponentCanDeactivate {
         danger: true,
       });
     }
+
     return true;
   }
 
-  isFieldInvalid(field: 'client_id' | 'number' | 'amount' | 'status' | 'due_date'): boolean {
-    const control = this.form.get(field);
-    return !!(control && control.invalid && (control.touched || control.dirty));
-  }
-
   submit(): void {
+    this.error.set(null);
+    this.validationErrors.set([]);
+
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+
       const errors: string[] = [];
-      if (this.form.get('client_id')?.invalid) errors.push('A client must be selected');
-      if (this.form.get('number')?.invalid) errors.push('A valid invoice number is required');
-      if (this.form.get('amount')?.invalid) errors.push('A valid amount is required (minimum 0)');
-      if (this.form.get('due_date')?.invalid) errors.push('A due date must be provided');
+
+      if (this.form.controls.client_id.invalid) {
+        errors.push('A valid client must be selected.');
+      }
+
+      if (this.form.controls.invoice_date.invalid) {
+        errors.push('Invoice date is required.');
+      }
+
+      if (this.form.controls.due_date.invalid) {
+        errors.push('A valid due date is required.');
+      }
+
+      if (this.form.controls.discount_percentage.invalid) {
+        errors.push('Discount must be between 0 and 100.');
+      }
+
+      if (this.items.invalid) {
+        errors.push('Please check all invoice item descriptions, quantities and prices.');
+      }
 
       this.validationErrors.set(errors);
       this.error.set('Please resolve the highlighted errors before submitting.');
@@ -319,29 +532,45 @@ export class InvoiceFormComponent implements ComponentCanDeactivate {
     }
 
     const raw = this.form.getRawValue();
+
+    if (raw.due_date < raw.invoice_date) {
+      this.form.controls.due_date.setErrors({ dateBeforeInvoice: true });
+      this.form.controls.due_date.markAsTouched();
+      this.error.set('Due date cannot be earlier than invoice date.');
+      this.validationErrors.set(['Due date must be on or after invoice date.']);
+      return;
+    }
+
     const payload: InvoicePayload = {
-      ...raw,
-      amount: Number(raw.amount),
-      notes: raw.notes || null,
+      client_id: Number(raw.client_id),
+      invoice_date: raw.invoice_date,
+      due_date: raw.due_date,
+      discount_percentage: Number(raw.discount_percentage),
+      notes: raw.notes.trim() || null,
+      items: raw.items.map((item) => ({
+        description: item.description.trim(),
+        quantity: Number(item.quantity),
+        unit_price: Number(item.unit_price),
+      })),
     };
 
     this.loading.set(true);
-    this.error.set(null);
-    this.validationErrors.set([]);
 
     const request = this.invoiceId
       ? this.invoiceService.update(this.invoiceId, payload)
       : this.invoiceService.create(payload);
 
     request.pipe(finalize(() => this.loading.set(false))).subscribe({
-      next: (res) => {
+      next: (response) => {
         this.submitted.set(true);
         this.clearDraft();
+
         this.toast.success(
           this.invoiceId
-            ? `Invoice ${res.data.number} updated successfully.`
-            : `Invoice ${res.data.number} created successfully.`,
+            ? `Invoice ${response.data.number} updated successfully.`
+            : `Invoice ${response.data.number} created successfully.`,
         );
+
         this.router.navigateByUrl('/invoices');
       },
       error: (response) => {
@@ -363,38 +592,87 @@ export class InvoiceFormComponent implements ComponentCanDeactivate {
       const confirmLeave = await this.canDeactivate();
       if (!confirmLeave) return;
     }
+
     this.router.navigateByUrl('/invoices');
   }
 
   discardDraft(): void {
     this.clearDraft();
+
     this.form.reset({
       client_id: 0,
-      number: '',
-      amount: 0,
-      status: 'draft',
-      due_date: '',
+      invoice_date: this.today(),
+      due_date: this.today(),
+      discount_percentage: 0,
       notes: '',
     });
+
+    while (this.items.length > 1) {
+      this.items.removeAt(this.items.length - 1);
+    }
+
+    this.items.at(0).reset({
+      description: '',
+      quantity: 1,
+      unit_price: 0,
+    });
+
+    this.form.markAsPristine();
+    this.form.markAsUntouched();
     this.hasDraft.set(false);
+
     this.toast.info('Draft discarded.');
   }
 
   private restoreDraft(): void {
     try {
       const draft = sessionStorage.getItem(DRAFT_STORAGE_KEY);
-      if (draft) {
-        const parsed = JSON.parse(draft);
-        this.form.patchValue(parsed);
-        this.hasDraft.set(true);
+
+      if (!draft) return;
+
+      const parsed = JSON.parse(draft);
+
+      if (Array.isArray(parsed.items) && parsed.items.length > 0) {
+        while (this.items.length > 0) {
+          this.items.removeAt(0);
+        }
+
+        parsed.items.forEach((item: {
+          description?: string;
+          quantity?: number;
+          unit_price?: number;
+        }) => {
+          const group = this.createItemGroup();
+          group.patchValue({
+            description: item.description ?? '',
+            quantity: Number(item.quantity ?? 1),
+            unit_price: Number(item.unit_price ?? 0),
+          });
+          this.items.push(group);
+        });
       }
-    } catch (_) {}
+
+      this.form.patchValue({
+        client_id: Number(parsed.client_id ?? 0),
+        invoice_date: parsed.invoice_date ?? this.today(),
+        due_date: parsed.due_date ?? this.today(),
+        discount_percentage: Number(parsed.discount_percentage ?? 0),
+        notes: parsed.notes ?? '',
+      });
+
+      this.form.markAsPristine();
+      this.hasDraft.set(true);
+    } catch {
+      this.clearDraft();
+    }
   }
 
   private clearDraft(): void {
     try {
       sessionStorage.removeItem(DRAFT_STORAGE_KEY);
-    } catch (_) {}
+    } catch {
+      // Storage may be unavailable.
+    }
   }
 
   private loadClients(): void {
@@ -405,19 +683,56 @@ export class InvoiceFormComponent implements ComponentCanDeactivate {
   }
 
   private loadInvoice(id: number): void {
-    this.invoiceService.get(id).subscribe({
-      next: (response) => {
-        const invoice = response.data;
-        this.form.patchValue({
-          client_id: invoice.client_id,
-          number: invoice.number,
-          amount: Number(invoice.amount),
-          status: invoice.status,
-          due_date: invoice.due_date,
-          notes: invoice.notes ?? '',
-        });
-      },
-      error: () => this.error.set('Unable to load this invoice details.'),
-    });
+    this.loading.set(true);
+
+    this.invoiceService.get(id)
+      .pipe(finalize(() => this.loading.set(false)))
+      .subscribe({
+        next: (response) => {
+          const invoice = response.data;
+
+          if (invoice.status !== 'draft') {
+            this.error.set('Only draft invoices can be edited.');
+            this.form.disable();
+            return;
+          }
+
+          const invoiceItems = invoice.items ?? [];
+
+          while (this.items.length > 0) {
+            this.items.removeAt(0);
+          }
+
+          if (invoiceItems.length > 0) {
+            invoiceItems.forEach((item) => {
+              const group = this.createItemGroup();
+              group.patchValue({
+                description: item.description,
+                quantity: Number(item.quantity),
+                unit_price: Number(item.unit_price),
+              });
+              this.items.push(group);
+            });
+          } else {
+            this.items.push(this.createItemGroup());
+          }
+
+          this.form.patchValue({
+            client_id: invoice.client_id,
+            invoice_date: invoice.invoice_date ?? this.today(),
+            due_date: invoice.due_date,
+            discount_percentage: Number(invoice.discount_percentage),
+            notes: invoice.notes ?? '',
+          });
+
+          this.form.markAsPristine();
+          this.form.markAsUntouched();
+        },
+        error: (response) => {
+          this.error.set(
+            response.error?.message ?? 'Unable to load this invoice details.',
+          );
+        },
+      });
   }
 }

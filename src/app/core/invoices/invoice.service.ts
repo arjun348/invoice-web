@@ -2,30 +2,36 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
+
 import {
+  ApiResource,
   Invoice,
   InvoiceStatus,
   PaginatedResponse,
 } from './invoice.types';
 
-export interface InvoicePayload {
-  client_id: number;
-  number: string;
-  amount: number;
-  status: InvoiceStatus;
-  due_date: string;
-  notes: string | null;
+export interface InvoiceItemPayload {
+  description: string;
+  quantity: number;
+  unit_price: number;
 }
 
-interface ApiResource<T> {
-  data: T;
+export interface InvoicePayload {
+  client_id: number;
+  invoice_date: string;
+  due_date: string;
+  discount_percentage: number;
+  notes: string | null;
+  items: InvoiceItemPayload[];
 }
 
 @Injectable({
   providedIn: 'root',
 })
 export class InvoiceService {
-  constructor(private readonly http: HttpClient) {}
+  private readonly apiUrl = `${environment.apiUrl}/invoices`;
+
+  constructor(private readonly http: HttpClient) { }
 
   list(filters: {
     search?: string;
@@ -34,36 +40,60 @@ export class InvoiceService {
   }): Observable<PaginatedResponse<Invoice>> {
     let params = new HttpParams().set('page', filters.page ?? 1);
 
-    if (filters.search) params = params.set('search', filters.search);
-    if (filters.status) params = params.set('status', filters.status);
+    if (filters.search) {
+      params = params.set('search', filters.search);
+    }
+
+    if (filters.status) {
+      params = params.set('status', filters.status);
+    }
 
     return this.http.get<PaginatedResponse<Invoice>>(
-      `${environment.apiUrl}/invoices`,
+      this.apiUrl,
       { params },
     );
   }
 
   get(id: number): Observable<ApiResource<Invoice>> {
     return this.http.get<ApiResource<Invoice>>(
-      `${environment.apiUrl}/invoices/${id}`,
+      `${this.apiUrl}/${id}`,
     );
   }
 
   create(payload: InvoicePayload): Observable<ApiResource<Invoice>> {
     return this.http.post<ApiResource<Invoice>>(
-      `${environment.apiUrl}/invoices`,
+      this.apiUrl,
       payload,
     );
   }
 
-  update(id: number, payload: InvoicePayload): Observable<ApiResource<Invoice>> {
+  update(
+    id: number,
+    payload: InvoicePayload,
+  ): Observable<ApiResource<Invoice>> {
     return this.http.put<ApiResource<Invoice>>(
-      `${environment.apiUrl}/invoices/${id}`,
+      `${this.apiUrl}/${id}`,
       payload,
     );
   }
 
-  delete(id: number): Observable<void> {
-    return this.http.delete<void>(`${environment.apiUrl}/invoices/${id}`);
+  delete(id: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.apiUrl}/${id}`,
+    );
+  }
+
+  send(id: number): Observable<ApiResource<Invoice>> {
+    return this.http.post<ApiResource<Invoice>>(
+      `${this.apiUrl}/${id}/send`,
+      {},
+    );
+  }
+
+  downloadPdf(id: number): Observable<Blob> {
+    return this.http.get(
+      `${this.apiUrl}/${id}/pdf`,
+      { responseType: 'blob' },
+    );
   }
 }
